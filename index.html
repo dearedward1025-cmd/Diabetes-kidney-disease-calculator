@@ -3,386 +3,958 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>腎臟科臨床風險評估工具 (PREVENT, SCORE2-D, KFRE)</title>
+    <title>臨床醫學計算機 Clinical Calculators</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
-        body {
-            font-family: 'Noto Sans TC', sans-serif;
-            background-color: #f8fafc;
+        /* KDIGO 專業學術風格 */
+        body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f1f5f9; }
+        .input-group { display: flex; flex-direction: column; margin-bottom: 0.75rem; }
+        .input-label { font-size: 0.875rem; font-weight: 600; color: #1e293b; margin-bottom: 0.25rem; }
+        .input-wrapper { position: relative; }
+        .input-field { width: 100%; padding: 0.5rem 0.75rem; padding-right: 3.5rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; outline: none; transition: border-color 0.2s; }
+        .input-field:focus { border-color: #0284c7; box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2); }
+        .input-unit { position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%); font-size: 0.75rem; color: #64748b; pointer-events: none; font-weight: 500; }
+        .card { background-color: white; border-radius: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.25rem; margin-bottom: 1.25rem; border: 1px solid #e2e8f0; }
+        
+        .result-box { margin-top: 1rem; padding: 0.75rem; background-color: #f0f9ff; border-left: 4px solid #0284c7; border-radius: 0.25rem; }
+        .result-value { font-size: 1.25rem; font-weight: 700; color: #0369a1; }
+        .result-desc { font-size: 0.875rem; color: #0f172a; margin-top: 0.25rem; }
+        
+        /* GN Guideline Card specific styles */
+        .gn-card { border-left-width: 4px; transition: all 0.3s ease; }
+        .gn-badge { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; margin-left: auto; }
+        .highlight-dose { color: #0369a1; font-weight: 600; background-color: #e0f2fe; padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-size: 0.8rem; }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        .card {
-            background: white;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            transition: all 0.3s ease;
-        }
-        .input-group label {
-            display: block;
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: #475569;
-            margin-bottom: 0.25rem;
-        }
-        .input-field {
-            width: 100%;
-            padding: 0.625rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        .input-field:focus {
-            border-color: #3b82f6;
-            ring: 2px ring #3b82f6;
-        }
-        .btn-tab {
-            padding: 0.75rem 1rem;
-            font-weight: 500;
-            border-bottom: 2px solid transparent;
-            color: #64748b;
-        }
-        .btn-tab.active {
-            color: #2563eb;
-            border-bottom-color: #2563eb;
-        }
-        .result-box {
-            display: none;
-        }
-        .result-box.active {
-            display: block;
-        }
-        .info-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 16px;
-            height: 16px;
-            background: #94a3b8;
-            color: white;
-            border-radius: 50%;
-            font-size: 10px;
-            cursor: help;
-            margin-left: 4px;
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
         }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <div class="max-w-4xl mx-auto">
-        <!-- Header -->
-        <header class="mb-8 text-center">
-            <h1 class="text-3xl font-bold text-slate-800 mb-2">腎臟科臨床風險評估工具</h1>
-            <p class="text-slate-500">整合 PREVENT, SCORE2-Diabetes 與 KFRE 預測模型</p>
-        </header>
+<body>
+    <div id="root"></div>
 
-        <!-- Navigation Tabs -->
-        <div class="flex border-b border-slate-200 mb-6 overflow-x-auto whitespace-nowrap">
-            <button onclick="showTab('prevent')" id="tab-prevent" class="btn-tab active">PREVENT (心血管風險)</button>
-            <button onclick="showTab('score2d')" id="tab-score2d" class="btn-tab">SCORE2-Diabetes</button>
-            <button onclick="showTab('kfre')" id="tab-kfre" class="btn-tab">KFRE (腎衰竭風險)</button>
-        </div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-        <!-- PREVENT Model -->
-        <div id="panel-prevent" class="result-box active">
-            <div class="card p-6">
-                <h2 class="text-xl font-semibold mb-4 text-blue-700 flex items-center">
-                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
-                    AHA PREVENT™ 評估 (10年風險)
-                </h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="input-group">
-                        <label>年齡 (30-79歲)</label>
-                        <input type="number" id="prev-age" class="input-field" placeholder="例如: 55">
+        // --- Layout & Reusable Components ---
+        
+        // 主分類折疊面板 (Level 1 Accordion)
+        const MainAccordion = ({ title, icon, iconColor, children, defaultOpen = false }) => {
+            const [isOpen, setIsOpen] = useState(defaultOpen);
+
+            useEffect(() => {
+                lucide.createIcons();
+            });
+
+            return (
+                <div className="mb-6 rounded-xl border border-slate-300 bg-white shadow-md overflow-hidden">
+                    <div 
+                        className="bg-slate-100 px-5 py-4 flex justify-between items-center cursor-pointer hover:bg-slate-200 transition-colors"
+                        onClick={() => setIsOpen(!isOpen)}
+                    >
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide={icon} className={`w-6 h-6 ${iconColor}`}></i>
+                            {title}
+                        </h2>
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white shadow-sm border border-slate-200">
+                            <i data-lucide={isOpen ? "chevron-up" : "chevron-down"} className="w-5 h-5 text-slate-600 transition-transform"></i>
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <label>性別</label>
-                        <select id="prev-sex" class="input-field">
-                            <option value="male">男性</option>
-                            <option value="female">女性</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>收縮壓 (mmHg)</label>
-                        <input type="number" id="prev-sbp" class="input-field" placeholder="120">
-                    </div>
-                    <div class="input-group">
-                        <label>總膽固醇 (mg/dL)</label>
-                        <input type="number" id="prev-tc" class="input-field" placeholder="200">
-                    </div>
-                    <div class="input-group">
-                        <label>HDL 膽固醇 (mg/dL)</label>
-                        <input type="number" id="prev-hdl" class="input-field" placeholder="50">
-                    </div>
-                    <div class="input-group">
-                        <label>eGFR (ml/min/1.73m²)</label>
-                        <input type="number" id="prev-egfr" class="input-field" placeholder="60">
-                    </div>
-                    <div class="input-group">
-                        <label>UACR 尿蛋白/肌酸酐比值 (mg/g)</label>
-                        <input type="number" id="prev-uacr" class="input-field" placeholder="10">
-                    </div>
-                    <div class="input-group flex items-end">
-                        <label class="inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="prev-smoker" class="form-checkbox h-5 w-5 text-blue-600">
-                            <span class="ml-2 text-slate-700">目前吸菸</span>
-                        </label>
-                        <label class="ml-6 inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="prev-dm" class="form-checkbox h-5 w-5 text-blue-600">
-                            <span class="ml-2 text-slate-700">糖尿病</span>
-                        </label>
-                    </div>
+                    {isOpen && (
+                        <div className="p-4 md:p-6 bg-slate-50 border-t border-slate-300 animate-fade-in space-y-2">
+                            {children}
+                        </div>
+                    )}
                 </div>
-                <button onclick="calcPREVENT()" class="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow-lg">計算風險</button>
-                <div id="res-prevent" class="mt-6 p-4 bg-blue-50 rounded-lg hidden"></div>
+            );
+        };
+
+        // 次分類/計算機折疊卡片 (Level 2 Accordion)
+        const CollapsibleCard = ({ title, icon, iconColor, rightAddon, children, defaultOpen = false, themeColor = "border-slate-300" }) => {
+            const [isOpen, setIsOpen] = useState(defaultOpen);
+
+            useEffect(() => {
+                lucide.createIcons();
+            });
+
+            return (
+                <div className={`card gn-card ${themeColor} !mb-3 shadow-sm hover:shadow transition-all overflow-hidden bg-white`}>
+                    <div 
+                        className="flex items-center justify-between cursor-pointer select-none py-1 -mx-1 px-1 rounded hover:bg-slate-50"
+                        onClick={() => setIsOpen(!isOpen)}
+                    >
+                        <h3 className="text-lg font-bold text-slate-800 flex items-center">
+                            <i data-lucide={icon} className={`w-5 h-5 mr-2 ${iconColor}`}></i>
+                            {title}
+                        </h3>
+                        <div className="flex items-center">
+                            {rightAddon}
+                            <i data-lucide={isOpen ? "chevron-up" : "chevron-down"} className="w-5 h-5 text-slate-400 ml-3 transition-transform"></i>
+                        </div>
+                    </div>
+                    
+                    {isOpen && (
+                        <div className="mt-4 pt-4 border-t border-slate-200 animate-fade-in">
+                            {children}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const InputNumber = ({ label, unit, value, onChange, placeholder = "" }) => (
+            <div className="input-group">
+                <label className="input-label">{label}</label>
+                <div className="input-wrapper">
+                    <input 
+                        type="number" 
+                        className="input-field" 
+                        value={value} 
+                        onChange={(e) => onChange(e.target.value)}
+                        placeholder={placeholder}
+                        step="any"
+                    />
+                    <span className="input-unit">{unit}</span>
+                </div>
             </div>
-        </div>
+        );
 
-        <!-- SCORE2-Diabetes -->
-        <div id="panel-score2d" class="result-box">
-            <div class="card p-6 border-l-4 border-green-500">
-                <h2 class="text-xl font-semibold mb-4 text-green-700 flex items-center">
-                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                    SCORE2-Diabetes 評估
-                </h2>
-                <p class="text-sm text-slate-500 mb-4 italic">*適用於 40-69 歲且患有第 2 型糖尿病的患者</p>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="input-group">
-                        <label>糖化血色素 HbA1c (%)</label>
-                        <input type="number" id="s2d-hba1c" step="0.1" class="input-field" placeholder="7.0">
-                    </div>
-                    <div class="input-group">
-                        <label>糖尿病確診年齡 (歲)</label>
-                        <input type="number" id="s2d-dm-age" class="input-field" placeholder="45">
-                    </div>
-                    <div class="input-group">
-                        <label>eGFR (ml/min/1.73m²)</label>
-                        <input type="number" id="s2d-egfr" class="input-field" placeholder="75">
-                    </div>
-                    <div class="input-group">
-                        <label>非 HDL 膽固醇 (mg/dL)</label>
-                        <input type="number" id="s2d-nonhdl" class="input-field" placeholder="130">
-                    </div>
-                    <div class="input-group md:col-span-2">
-                        <label class="flex items-center">
-                            地區風險等級 
-                            <span class="info-badge" title="點擊查看詳細地區說明" onclick="showRegionHelp()">?</span>
-                        </label>
-                        <select id="s2d-region" class="input-field">
-                            <option value="low">低風險 (Low Risk)</option>
-                            <option value="moderate">中等風險 (Moderate Risk)</option>
-                            <option value="high" selected>高風險 (High Risk) - 推薦亞洲多數地區</option>
-                            <option value="very_high">極高風險 (Very High Risk)</option>
-                        </select>
-                        <p class="text-[11px] text-slate-400 mt-1">根據 ESC 準則，多數亞洲與東歐國家歸類於高/極高風險區。</p>
-                    </div>
+        const InputSelect = ({ label, value, onChange, options, hint }) => (
+            <div className="input-group">
+                <label className="input-label flex items-center justify-between">
+                    {label}
+                    {hint && <span className="text-xs text-slate-400 font-normal">{hint}</span>}
+                </label>
+                <div className="input-wrapper">
+                    <select className="input-field" value={value} onChange={(e) => onChange(e.target.value)}>
+                        {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>
                 </div>
-                <button onclick="calcSCORE2D()" class="w-full mt-6 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 shadow-lg">計算風險</button>
-                <div id="res-score2d" class="mt-6 p-4 bg-green-50 rounded-lg hidden"></div>
             </div>
-        </div>
+        );
 
-        <!-- KFRE (Kidney Failure Risk Equation) -->
-        <div id="panel-kfre" class="result-box">
-            <div class="card p-6 border-l-4 border-amber-500">
-                <h2 class="text-xl font-semibold mb-4 text-amber-700 flex items-center">
-                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.628.288a2 2 0 01-1.645 0l-.628-.288a6 6 0 00-3.86-.517l-2.387.477a2 2 0 00-1.022.547V10a2 2 0 012-2h12a2 2 0 012 2v5.428z"></path></svg>
-                    KFRE 4項變數風險方程
-                </h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="input-group">
-                        <label>年齡 (歲)</label>
-                        <input type="number" id="kfre-age" class="input-field" placeholder="60">
-                    </div>
-                    <div class="input-group">
-                        <label>性別</label>
-                        <select id="kfre-sex" class="input-field">
-                            <option value="male">男性</option>
-                            <option value="female">女性</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>eGFR (ml/min/1.73m²)</label>
-                        <input type="number" id="kfre-egfr" class="input-field" placeholder="30">
-                    </div>
-                    <div class="input-group">
-                        <label>尿液 ACR (mg/g)</label>
-                        <input type="number" id="kfre-acr" class="input-field" placeholder="300">
-                    </div>
+        const InputCheckbox = ({ label, checked, onChange }) => (
+            <label className="inline-flex items-center cursor-pointer mt-2 mr-6">
+                <input 
+                    type="checkbox" 
+                    className="w-4 h-4 text-blue-600 bg-slate-100 border-slate-300 rounded focus:ring-blue-500 cursor-pointer" 
+                    checked={checked} 
+                    onChange={(e) => onChange(e.target.checked)} 
+                />
+                <span className="ml-2 text-sm font-semibold text-slate-700">{label}</span>
+            </label>
+        );
+
+        const ResultView = ({ value, unit, description, references }) => (
+            <div className="result-box">
+                <div className="flex items-baseline gap-2">
+                    <span className="result-value">{value !== null ? value : "---"}</span>
+                    {value !== null && <span className="text-sm font-bold text-sky-800">{unit}</span>}
                 </div>
-                <button onclick="calcKFRE()" class="w-full mt-6 bg-amber-600 text-white py-3 rounded-lg font-bold hover:bg-amber-700 shadow-lg">計算 2年與5年風險</button>
-                <div id="res-kfre" class="mt-6 p-4 bg-amber-50 rounded-lg hidden"></div>
+                {description && <div className="result-desc font-semibold mt-1">{description}</div>}
+                {references && (
+                    <div className="mt-2 pt-2 border-t border-sky-200 text-xs text-sky-700 space-y-1 font-medium">
+                        {references.map((ref, idx) => <div key={idx}>• {ref}</div>)}
+                    </div>
+                )}
             </div>
-        </div>
+        );
 
-        <!-- Disclaimer -->
-        <footer class="mt-12 text-xs text-slate-400 text-center pb-8">
-            <p>本工具僅供學術與臨床參考使用，不作為最終醫療診斷依據。</p>
-            <p>© 2024 醫療專業助手 - 係基於已知公式計算</p>
-        </footer>
-    </div>
+        // --- Calculators for Section 1 (Renal / Electrolytes) ---
+        const FeNaCalc = () => {
+            const [sNa, setSNa] = useState('');
+            const [uNa, setUNa] = useState('');
+            const [sCr, setSCr] = useState('');
+            const [uCr, setUCr] = useState('');
 
-    <!-- Message Box UI -->
-    <div id="modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl p-6 max-w-sm w-full">
-            <h3 id="modal-title" class="text-lg font-bold mb-2">提示</h3>
-            <div id="modal-body" class="text-slate-600 mb-4 text-sm leading-relaxed"></div>
-            <button onclick="closeModal()" class="w-full bg-slate-800 text-white py-2 rounded-lg">確定</button>
-        </div>
-    </div>
+            const feNa = (sNa && uNa && sCr && uCr && parseFloat(sNa) !== 0 && parseFloat(uCr) !== 0) 
+                ? ((parseFloat(uNa) * parseFloat(sCr)) / (parseFloat(sNa) * parseFloat(uCr)) * 100).toFixed(2) 
+                : null;
 
-    <script>
-        function showTab(tabId) {
-            document.querySelectorAll('.btn-tab').forEach(btn => btn.classList.remove('active'));
-            document.getElementById('tab-' + tabId).classList.add('active');
-            document.querySelectorAll('.result-box').forEach(panel => panel.classList.remove('active'));
-            document.getElementById('panel-' + tabId).classList.add('active');
-        }
+            return (
+                <CollapsibleCard title="FeNa 鈉排泄分率" icon="droplet" iconColor="text-blue-500" themeColor="border-blue-400">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <h3 className="text-sm font-bold text-sky-700 mb-2">血清 (Serum)</h3>
+                            <InputNumber label="血清鈉 (Na)" unit="mEq/L" value={sNa} onChange={setSNa} />
+                            <InputNumber label="血清肌酸酐 (Cr)" unit="mg/dL" value={sCr} onChange={setSCr} />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-sky-700 mb-2">尿液 (Urine)</h3>
+                            <InputNumber label="尿液鈉 (Na)" unit="mEq/L" value={uNa} onChange={setUNa} />
+                            <InputNumber label="尿液肌酸酐 (Cr)" unit="mg/dL" value={uCr} onChange={setUCr} />
+                        </div>
+                    </div>
+                    <div className="mt-2">
+                        <ResultView 
+                            value={feNa} unit="%" description={feNa ? (feNa < 1 ? "提示腎前性 (Prerenal)" : feNa > 2 ? "提示腎因性 (ATN)" : "介於 1-2% 之間") : null}
+                            references={["< 1%: 腎前性 (Prerenal)", "> 2%: 急性腎小管壞死 (ATN)", "*若使用利尿劑則準確度下降"]}
+                        />
+                    </div>
+                </CollapsibleCard>
+            );
+        };
 
-        function showMessage(title, messageHtml) {
-            document.getElementById('modal-title').innerText = title;
-            document.getElementById('modal-body').innerHTML = messageHtml;
-            document.getElementById('modal').classList.remove('hidden');
-        }
+        const FeKTTKGCalc = () => {
+            const [sK, setSK] = useState('');
+            const [uK, setUK] = useState('');
+            const [sCr, setSCr] = useState('');
+            const [uCr, setUCr] = useState('');
+            const [sOsm, setSOsm] = useState('');
+            const [uOsm, setUOsm] = useState('');
 
-        function closeModal() {
-            document.getElementById('modal').classList.add('hidden');
-        }
+            const feK = (sK && uK && sCr && uCr && parseFloat(sK) !== 0 && parseFloat(uCr) !== 0)
+                ? ((parseFloat(uK) * parseFloat(sCr)) / (parseFloat(sK) * parseFloat(uCr)) * 100).toFixed(2)
+                : null;
+            
+            const ttkg = (sK && uK && sOsm && uOsm && parseFloat(sK) !== 0 && parseFloat(uOsm) !== 0)
+                ? ((parseFloat(uK) * parseFloat(sOsm)) / (parseFloat(sK) * parseFloat(uOsm))).toFixed(2)
+                : null;
 
-        function showRegionHelp() {
-            const helpContent = `
-                <ul class="space-y-2">
-                    <li><strong>🟢 低風險:</strong> 比利時、丹麥、法國、以色列、挪威、西班牙、瑞士、英國、荷蘭等。</li>
-                    <li><strong>🟡 中等風險:</strong> 奧地利、德國、希臘、匈牙利、義大利、波蘭、葡萄牙等。</li>
-                    <li><strong>🔴 高風險:</strong> <strong>台灣/多數亞洲地區</strong>、捷克、克羅埃西亞、愛沙尼亞、土耳其等。</li>
-                    <li><strong>⚫ 極高風險:</strong> 埃及、俄羅斯、烏克蘭、保加利亞、羅馬尼亞等。</li>
-                </ul>
-                <p class="mt-2 text-xs text-slate-400 font-italic">* 根據 ESC 臨床指引分類。</p>
-            `;
-            showMessage("SCORE2 地區風險說明", helpContent);
-        }
+            const uKCr = (uK && uCr && parseFloat(uCr) !== 0)
+                ? ((parseFloat(uK) * 100) / parseFloat(uCr)).toFixed(1)
+                : null;
 
-        // --- KFRE Calculation ---
-        function calcKFRE() {
-            const age = parseFloat(document.getElementById('kfre-age').value);
-            const sex = document.getElementById('kfre-sex').value;
-            const egfr = parseFloat(document.getElementById('kfre-egfr').value);
-            const acr = parseFloat(document.getElementById('kfre-acr').value);
-
-            if (!age || !egfr || isNaN(acr)) {
-                showMessage("輸入錯誤", "請填寫所有必要欄位。");
-                return;
+            let interpretation = "";
+            if (sK && feK !== null && ttkg !== null) {
+                const skVal = parseFloat(sK);
+                if (skVal < 3.5) {
+                    if (feK > 2 || ttkg > 3) interpretation = "【低血鉀評估】 傾向「腎臟流失」(如：利尿劑、醛固酮增多症)。";
+                    else interpretation = "【低血鉀評估】 傾向「腎外流失」(如：腸胃道流失)。";
+                } else if (skVal > 5.0) {
+                    if (ttkg < 3) interpretation = "【高血鉀評估】 醛固酮缺乏或阻抗 (懷疑 Type 4 RTA 或藥物影響)。";
+                    else if (ttkg >= 7) interpretation = "【高血鉀評估】 醛固酮反應正常 (傾向攝取過多或細胞內轉移)。";
+                    else interpretation = "【高血鉀評估】 TTKG 介於 3-7，需結合臨床進一步評估。";
+                } else {
+                    interpretation = "【血鉀正常】 TTKG 正常範圍約 8-9 (一般飲食)。";
+                }
+            } else if (feK !== null || ttkg !== null) {
+                interpretation = "請輸入完整血清鉀、尿液鉀、肌酸酐與滲透壓，以獲得綜合評估。";
             }
 
-            const maleCoeff = (sex === 'male' ? 0.2238 : 0);
-            const lnAcr = Math.log(acr);
-            
-            const base2 = -0.2201 * (age/10 - 7.036) + maleCoeff - 0.5567 * (egfr/5 - 7.222) + 0.4510 * (lnAcr - 5.137);
-            const risk2 = (1 - Math.pow(0.9832, Math.exp(base2))) * 100;
-
-            const base5 = -0.2167 * (age/10 - 7.036) + maleCoeff - 0.5541 * (egfr/5 - 7.222) + 0.4560 * (lnAcr - 5.137);
-            const risk5 = (1 - Math.pow(0.9365, Math.exp(base5))) * 100;
-
-            const resDiv = document.getElementById('res-kfre');
-            resDiv.innerHTML = `
-                <div class="flex flex-col space-y-2">
-                    <div class="flex justify-between border-b pb-1">
-                        <span class="font-medium text-slate-700">2年 腎衰竭風險:</span>
-                        <span class="text-xl font-bold text-amber-600">${risk2.toFixed(2)}%</span>
+            return (
+                <CollapsibleCard title="FeK 與 TTKG 鉀離子綜合評估" icon="activity" iconColor="text-blue-600" themeColor="border-blue-500">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <InputNumber label="血清鉀 (K)" unit="mEq/L" value={sK} onChange={setSK} />
+                        <InputNumber label="血清肌酸酐 (Cr)" unit="mg/dL" value={sCr} onChange={setSCr} />
+                        <InputNumber label="血清滲透壓 (Osm)" unit="mOsm/kg" value={sOsm} onChange={setSOsm} />
+                        
+                        <InputNumber label="尿液鉀 (K)" unit="mEq/L" value={uK} onChange={setUK} />
+                        <InputNumber label="尿液肌酸酐 (Cr)" unit="mg/dL" value={uCr} onChange={setUCr} />
+                        <InputNumber label="尿液滲透壓 (Osm)" unit="mOsm/kg" value={uOsm} onChange={setUOsm} />
                     </div>
-                    <div class="flex justify-between border-b pb-1">
-                        <span class="font-medium text-slate-700">5年 腎衰竭風險:</span>
-                        <span class="text-xl font-bold text-amber-600">${risk5.toFixed(2)}%</span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-2">
+                        <ResultView 
+                            value={feK} unit="%" description="鉀排泄分率 (FeK)"
+                            references={[
+                                "【低血鉀】FeK < 2%: 腎外流失；FeK > 2%: 腎臟流失",
+                                "【高血鉀】FeK < 10%: 腎臟排鉀障礙 (如醛固酮低下、CKD)；FeK > 10%: 腎外原因",
+                                "(Ref: Kamel KS, Halperin ML. Fluid, Electrolyte and Acid-Base Physiology.)"
+                            ]}
+                        />
+                        <ResultView 
+                            value={ttkg} unit="" description="跨細胞鉀離子梯度 (TTKG)"
+                            references={[
+                                "【高血鉀】TTKG < 3: 醛固酮缺乏/阻抗；TTKG > 7: 醛固酮作用正常",
+                                "【低血鉀】TTKG < 3: 腎外流失 (適當保留)；TTKG > 4: 腎臟不當流失 (如利尿劑、醛固酮增多)",
+                                "(Ref: Choi MJ, Ziyadeh FN. J Am Soc Nephrol. 2008;19(2):211-213.)"
+                            ]}
+                        />
+                        <ResultView 
+                            value={uKCr} unit="mEq/g" description="Urine K/Cr ratio"
+                            references={[
+                                "評估腎臟鉀流失的簡化指標",
+                                "Urine K/Cr > 15-20 mEq/g: 腎臟流失 (Renal wasting)",
+                                "Urine K/Cr < 15 mEq/g: 腎外流失 (Extrarenal loss)"
+                            ]}
+                        />
                     </div>
-                    <p class="text-xs text-slate-500 mt-2">註: 使用 4-variable KFRE (North American 參數)。</p>
+                    {(feK || ttkg) && (
+                        <div className="mt-4 p-3 bg-slate-50 text-slate-800 rounded border border-slate-300 font-semibold text-sm">
+                            💡 綜合判定：{interpretation}
+                        </div>
+                    )}
+                </CollapsibleCard>
+            );
+        };
+
+        const FeCaCalc = () => {
+            const [sCa, setSCa] = useState('');
+            const [uCa, setUCa] = useState('');
+            const [sCr, setSCr] = useState('');
+            const [uCr, setUCr] = useState('');
+
+            const feca = (sCa && uCa && sCr && uCr && parseFloat(sCa) !== 0 && parseFloat(uCr) !== 0)
+                ? ((parseFloat(uCa) * parseFloat(sCr)) / (parseFloat(sCa) * parseFloat(uCr)) * 100).toFixed(2)
+                : null;
+
+            const uCaCr_mg = (uCa && uCr && parseFloat(uCr) !== 0)
+                ? ((parseFloat(uCa) * 4) / parseFloat(uCr)).toFixed(3)
+                : null;
+
+            let desc = "";
+            if (feca !== null) {
+                if (feca < 1) desc = "高度懷疑 FHH (家族性低尿鈣高血鈣症)";
+                else if (feca > 2) desc = "較傾向 PHPT (原發性副甲狀腺機能亢進)";
+                else desc = "介於 1% ~ 2% 之間，需結合臨床判斷";
+            }
+
+            const rightBadge = uCaCr_mg !== null ? (
+                <span className="text-blue-800 font-bold bg-blue-50 px-3 py-1 rounded-full text-sm shadow-sm border border-blue-200">
+                    尿 Ca/Cr: {uCaCr_mg} <span className="text-xs">mg/mg</span>
+                </span>
+            ) : null;
+
+            return (
+                <CollapsibleCard title="FeCa 與 U Ca/Cr" icon="bone" iconColor="text-teal-600" themeColor="border-teal-500" rightAddon={rightBadge}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <InputNumber label="血清鈣 (Ca)" unit="mmol/L" value={sCa} onChange={setSCa} />
+                        <InputNumber label="尿液鈣 (Ca)" unit="mmol/L" value={uCa} onChange={setUCa} />
+                        <InputNumber label="血清肌酸酐 (Cr)" unit="mg/dL" value={sCr} onChange={setSCr} />
+                        <InputNumber label="尿液肌酸酐 (Cr)" unit="mg/dL" value={uCr} onChange={setUCr} />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <ResultView 
+                            value={feca} unit="%" description={desc}
+                            references={[
+                                "診斷 FHH (Familial Hypocalciuric Hypercalcemia) 的重要參考",
+                                "FeCa < 1% (或 0.01): 提示 FHH",
+                                "FeCa > 2% (或 0.02): 提示 原發性副甲狀腺機能亢進 (PHPT)"
+                            ]}
+                        />
+                        <ResultView 
+                            value={uCaCr_mg} unit="mg/mg" description="Urine Ca/Cr 鑑別診斷"
+                            references={[
+                                "於低血鉀/代謝性鹼中毒患者鑑別診斷：",
+                                "U Ca/Cr < 0.1 mg/mg: 傾向 Gitelman syndrome (或 thiazide 效應)",
+                                "U Ca/Cr > 0.2 mg/mg: 傾向 Bartter syndrome (或 loop diuretic 效應)"
+                            ]}
+                        />
+                    </div>
+                </CollapsibleCard>
+            );
+        };
+
+        const ARRCalc = () => {
+            const [aldo, setAldo] = useState('');
+            const [renin, setRenin] = useState('');
+
+            const arr = (aldo && renin && parseFloat(renin) !== 0)
+                ? (parseFloat(aldo) / parseFloat(renin)).toFixed(2)
+                : null;
+
+            return (
+                <CollapsibleCard title="ARR 醛固酮腎素比值" icon="test-tube" iconColor="text-purple-600" themeColor="border-purple-500">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <InputNumber label="Aldosterone (醛固酮)" unit="pg/mL" value={aldo} onChange={setAldo} />
+                        <InputNumber label="Renin Activity (腎素活性, PRA)" unit="ng/mL/h" value={renin} onChange={setRenin} />
+                    </div>
+                    <ResultView 
+                        value={arr} unit="pg/mL per ng/mL/h" 
+                        description={arr !== null ? (parseFloat(arr) > 200 ? "ARR > 200，原發性醛固酮增多症(PA)篩檢陽性" : "未達篩檢陽性標準") : null}
+                        references={[
+                            "用於篩檢原發性醛固酮增多症 (Primary Aldosteronism)",
+                            "正常範圍: ARR < 200",
+                            "篩檢陽性標準: ARR > 200 (部分指引為 > 300) 且 Aldosterone > 150 pg/mL (或 15 ng/dL)",
+                            "注意: 單位換算 1 ng/dL = 10 pg/mL。此計算機使用 pg/mL 計算。"
+                        ]}
+                    />
+                </CollapsibleCard>
+            );
+        };
+
+        // --- Calculators for Section 2 (Acid-Base & Gaps) ---
+        const SerumGapsCalc = () => {
+            const [na, setNa] = useState('');
+            const [cl, setCl] = useState('');
+            const [hco3, setHco3] = useState('');
+            const [glu, setGlu] = useState('');
+            const [bun, setBun] = useState('');
+            const [measOsm, setMeasOsm] = useState('');
+
+            const ag = (na && cl && hco3) ? (parseFloat(na) - (parseFloat(cl) + parseFloat(hco3))).toFixed(1) : null;
+            const calcOsm = (na && glu && bun) ? (2 * parseFloat(na) + parseFloat(glu) / 18 + parseFloat(bun) / 2.8).toFixed(1) : null;
+            const osmGap = (measOsm && calcOsm) ? (parseFloat(measOsm) - parseFloat(calcOsm)).toFixed(1) : null;
+
+            return (
+                <CollapsibleCard title="血清間隙 (Serum Gaps)" icon="flask-conical" iconColor="text-cyan-600" themeColor="border-cyan-500">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <InputNumber label="血清鈉 (Na)" unit="mEq/L" value={na} onChange={setNa} />
+                        <InputNumber label="血清氯 (Cl)" unit="mEq/L" value={cl} onChange={setCl} />
+                        <InputNumber label="重碳酸鹽 (HCO3)" unit="mEq/L" value={hco3} onChange={setHco3} />
+                        <InputNumber label="血糖 (Glucose)" unit="mg/dL" value={glu} onChange={setGlu} />
+                        <InputNumber label="尿素氮 (BUN)" unit="mg/dL" value={bun} onChange={setBun} />
+                        <InputNumber label="實測滲透壓" unit="mOsm/kg" value={measOsm} onChange={setMeasOsm} />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <ResultView 
+                            value={ag} unit="mEq/L" description="Serum Anion Gap"
+                            references={["正常範圍 (無鉀): 8 - 12 mEq/L", "> 12 提示高陰離子間隙代謝性酸中毒 (HAGMA)"]}
+                        />
+                        <ResultView 
+                            value={osmGap} unit="mOsm/kg" description={`Osmolar Gap (計算滲透壓: ${calcOsm || '---'})`}
+                            references={["正常範圍: < 10 mOsm/kg", "> 10 提示存在未測定的滲透壓物質 (如酒精、甲醇、乙二醇)"]}
+                        />
+                    </div>
+                </CollapsibleCard>
+            );
+        };
+
+        const UrineGapsRTACalc = () => {
+            const [uNa, setUNa] = useState('');
+            const [uK, setUK] = useState('');
+            const [uCl, setUCl] = useState('');
+            const [uBUN, setUBUN] = useState('');
+            const [uGlu, setUGlu] = useState('');
+            const [measUOsm, setMeasUOsm] = useState('');
+            const [upH, setUpH] = useState('');
+            const [sK, setSK] = useState('');
+
+            const uag = (uNa && uK && uCl) ? (parseFloat(uNa) + parseFloat(uK) - parseFloat(uCl)).toFixed(1) : null;
+            const calcUOsm = (uNa && uK && uBUN && uGlu) ? (2 * (parseFloat(uNa) + parseFloat(uK)) + parseFloat(uBUN) / 2.8 + parseFloat(uGlu) / 18).toFixed(1) : null;
+            const uOsmGap = (measUOsm && calcUOsm) ? (parseFloat(measUOsm) - parseFloat(calcUOsm)).toFixed(1) : null;
+
+            let rtaMsg = "";
+            if (uag !== null) {
+                const uagVal = parseFloat(uag);
+                if (uagVal > 0) {
+                    rtaMsg = "UAG 為正值 (>0)，提示腎臟排酸(NH4+)障礙，符合 RTA 表現。";
+                    if (upH && sK) {
+                        const uphVal = parseFloat(upH);
+                        const skVal = parseFloat(sK);
+                        if (uphVal >= 5.5 && skVal < 5.0) {
+                            rtaMsg += " ➔ 判定為：Type 1 (遠端) RTA (特徵：Urine pH ≥ 5.5，無高血鉀)";
+                        } else if (uphVal < 5.5 && skVal >= 5.0) {
+                            rtaMsg += " ➔ 判定為：Type 4 RTA (特徵：Urine pH < 5.5，伴隨高血鉀)";
+                        } else if (uphVal < 5.5 && skVal < 5.0) {
+                             rtaMsg += " ➔ 判定為：Type 2 (近端) RTA (特徵：Urine pH < 5.5，無高血鉀。註：須在非重碳酸鹽大量流失的穩定狀態下)";
+                        } else {
+                             rtaMsg += " ➔ 判定：表現不典型，請綜合臨床狀況評估。";
+                        }
+                    } else {
+                        rtaMsg += " (請輸入 Urine pH 與 血清 K 以自動判定 RTA 類型)";
+                    }
+                } else if (uagVal < 0) {
+                    rtaMsg = "UAG 為負值 (<0)，表示腎臟適當增加 NH4+ 排泄，通常代表腸胃道鹼流失 (如腹瀉)。";
+                } else {
+                    rtaMsg = "UAG 接近 0，結果處於邊界值。可參考 Urine Osmo Gap 評估 NH4+ 排泄量。";
+                }
+            }
+
+            return (
+                <CollapsibleCard title="尿液間隙與 RTA 評估 (Urine Gaps & RTA)" icon="filter" iconColor="text-indigo-600" themeColor="border-indigo-500">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <InputNumber label="尿液鈉 (Na)" unit="mEq/L" value={uNa} onChange={setUNa} />
+                        <InputNumber label="尿液鉀 (K)" unit="mEq/L" value={uK} onChange={setUK} />
+                        <InputNumber label="尿液氯 (Cl)" unit="mEq/L" value={uCl} onChange={setUCl} />
+                        <InputNumber label="血清鉀 (K)" unit="mEq/L" value={sK} onChange={setSK} placeholder="用於RTA" />
+                        <InputNumber label="尿液 BUN" unit="mg/dL" value={uBUN} onChange={setUBUN} />
+                        <InputNumber label="尿液血糖" unit="mg/dL" value={uGlu} onChange={setUGlu} />
+                        <InputNumber label="實測尿滲透壓" unit="mOsm/kg" value={measUOsm} onChange={setMeasUOsm} />
+                        <InputNumber label="尿液 pH" unit="" value={upH} onChange={setUpH} />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <ResultView 
+                            value={uag} unit="mEq/L" description="Urine Anion Gap (UAG)"
+                            references={[
+                                "公式: UAG = 尿鈉(Na) + 尿鉀(K) - 尿氯(Cl)",
+                                "正常情況或腸胃道鹼流失: UAG < 0", 
+                                "腎小管酸中毒 (RTA): UAG > 0",
+                                "Ref: Goldstein MB, et al. Am J Med Sci. 1986;292:198-202."
+                            ]}
+                        />
+                        <ResultView 
+                            value={uOsmGap} unit="mOsm/kg" description={`Urine Osmolar Gap (計算值: ${calcUOsm || '---'})`}
+                            references={[
+                                "公式: UOG = 實測尿滲透壓 - 計算尿滲透壓",
+                                "計算尿滲透壓 = 2×(尿Na+尿K) + 尿BUN/2.8 + 尿Glu/18",
+                                "UOG 代表尿液中未測定的滲透壓物質，主要為 NH4+",
+                                "UOG > 400 mOsm/kg: 腎臟排酸能力正常",
+                                "UOG < 150 mOsm/kg: 腎臟排 NH4+ 障礙 (如 RTA)",
+                                "Ref: Halperin ML, et al. Am J Kidney Dis. 1988;11:531-535."
+                            ]}
+                        />
+                    </div>
+                    {uag !== null && (
+                        <div className="mt-4 p-4 bg-sky-50 text-slate-900 rounded border border-sky-200 text-base">
+                            <span className="font-bold text-blue-900">臨床分析：</span><span className="font-semibold text-slate-800">{rtaMsg}</span>
+                            <div className="mt-3 pt-3 border-t border-sky-200 text-xs text-slate-600 font-medium">
+                                📚 RTA 診斷參考標準 (Reference):<br/>
+                                • Type 1 RTA (Distal): UAG &gt; 0, Urine pH &ge; 5.5, 血清 K 正常或低下。<br/>
+                                • Type 2 RTA (Proximal): UAG &gt; 0, Urine pH &lt; 5.5 (於穩定狀態), 血清 K 正常或低下。<br/>
+                                • Type 4 RTA: UAG &gt; 0, Urine pH &lt; 5.5, 血清 K 上升 (&ge; 5.0)。<br/>
+                                <span>(Ref: Brenner and Rector's The Kidney, 11th Edition)</span>
+                            </div>
+                        </div>
+                    )}
+                </CollapsibleCard>
+            );
+        };
+
+        const ABGCalc = () => {
+            const [ph, setPh] = useState('');
+            const [pco2, setPco2] = useState('');
+            const [hco3, setHco3] = useState('');
+
+            const analyzeABG = () => {
+                if (!ph || !pco2 || !hco3) return null;
+                const vPh = parseFloat(ph);
+                const vPco2 = parseFloat(pco2);
+                const vHco3 = parseFloat(hco3);
+                
+                let primary = "";
+                let comp = [];
+
+                if (vPh < 7.35) { // Acidemia
+                    if (vPco2 > 45 && vHco3 < 22) {
+                        primary = "混合型酸中毒 (Mixed Acidosis)";
+                    } else if (vHco3 < 22) {
+                        primary = "代謝性酸中毒 (Metabolic Acidosis)";
+                        const expectedPco2 = 1.5 * vHco3 + 8;
+                        comp.push(`代償預期 PaCO2: ${(expectedPco2 - 2).toFixed(1)} ~ ${(expectedPco2 + 2).toFixed(1)}`);
+                        if (vPco2 > expectedPco2 + 2) comp.push("合併未代償之 呼吸性酸中毒");
+                        if (vPco2 < expectedPco2 - 2) comp.push("合併 呼吸性鹼中毒");
+                    } else if (vPco2 > 45) {
+                        primary = "呼吸性酸中毒 (Respiratory Acidosis)";
+                        const acuteHco3 = 24 + ((vPco2 - 40) / 10) * 1;
+                        const chronicHco3 = 24 + ((vPco2 - 40) / 10) * 3.5; // range 3-4
+                        comp.push(`急性代償預期 HCO3: ~${acuteHco3.toFixed(1)}`);
+                        comp.push(`慢性代償預期 HCO3: ~${chronicHco3.toFixed(1)}`);
+                    }
+                } else if (vPh > 7.45) { // Alkalemia
+                    if (vPco2 < 35 && vHco3 > 26) {
+                        primary = "混合型鹼中毒 (Mixed Alkalosis)";
+                    } else if (vHco3 > 26) {
+                        primary = "代謝性鹼中毒 (Metabolic Alkalosis)";
+                        const expectedPco2 = 40 + 0.7 * (vHco3 - 24);
+                        comp.push(`代償預期 PaCO2: ${(expectedPco2 - 2).toFixed(1)} ~ ${(expectedPco2 + 2).toFixed(1)}`);
+                    } else if (vPco2 < 35) {
+                        primary = "呼吸性鹼中毒 (Respiratory Alkalosis)";
+                        const acuteHco3 = 24 - ((40 - vPco2) / 10) * 2;
+                        const chronicHco3 = 24 - ((40 - vPco2) / 10) * 4.5; // range 4-5
+                        comp.push(`急性代償預期 HCO3: ~${acuteHco3.toFixed(1)}`);
+                        comp.push(`慢性代償預期 HCO3: ~${chronicHco3.toFixed(1)}`);
+                    }
+                } else {
+                    primary = "pH值正常範圍 (完全代償或無酸鹼異常)";
+                }
+
+                return { primary, comp };
+            };
+
+            const result = analyzeABG();
+
+            return (
+                <CollapsibleCard title="動脈血氣體分析 (ABG)" icon="wind" iconColor="text-sky-500" themeColor="border-sky-400">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <InputNumber label="pH" unit="" value={ph} onChange={setPh} />
+                        <InputNumber label="PaCO2" unit="mmHg" value={pco2} onChange={setPco2} />
+                        <InputNumber label="HCO3" unit="mEq/L" value={hco3} onChange={setHco3} />
+                    </div>
+                    {result && (
+                        <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded">
+                            <div className="text-base font-bold text-blue-900 mb-2">判斷結果：{result.primary}</div>
+                            {result.comp.length > 0 && (
+                                <ul className="list-disc list-inside text-slate-700 text-sm space-y-1 font-medium">
+                                    {result.comp.map((c, i) => <li key={i}>{c}</li>)}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+                    <div className="mt-4 pt-3 border-t border-slate-200 text-xs text-slate-500 font-medium space-y-1">
+                        <div><strong>📚 ABG 代償公式 (Boston Rules) Reference:</strong></div>
+                        <div>• 代謝性酸中毒 (Winter's formula): 預期 PaCO2 = 1.5 × HCO3 + 8 (±2)</div>
+                        <div>• 代謝性鹼中毒: 預期 PaCO2 = 40 + 0.7 × (HCO3 - 24) (±2)</div>
+                        <div>• 呼吸性酸中毒: 急性代償 ΔHCO3 = 1 × (ΔPaCO2/10)；慢性代償 ΔHCO3 = 3.5 × (ΔPaCO2/10)</div>
+                        <div>• 呼吸性鹼中毒: 急性代償 ΔHCO3 = 2 × (ΔPaCO2/10)；慢性代償 ΔHCO3 = 4.5 × (ΔPaCO2/10)</div>
+                        <div>(Ref: Adrogué HJ, Madias NE. Management of life-threatening acid-base disorders. N Engl J Med. 1998;338:26-34.)</div>
+                    </div>
+                </CollapsibleCard>
+            );
+        };
+
+        // --- Calculators for Section 3 (Risk Assessment) ---
+        const PREVENTCalc = () => {
+            const [age, setAge] = useState('');
+            const [sex, setSex] = useState('male');
+            const [sbp, setSbp] = useState('');
+            const [tc, setTc] = useState('');
+            const [hdl, setHdl] = useState('');
+            const [egfr, setEgfr] = useState('');
+            const [uacr, setUacr] = useState('');
+            const [smoker, setSmoker] = useState(false);
+            const [dm, setDm] = useState(false);
+
+            const calculateRisk = () => {
+                if (!age || !sbp || !egfr) return null;
+                const vAge = parseFloat(age);
+                const vSbp = parseFloat(sbp);
+                const vEgfr = parseFloat(egfr);
+                const vUacr = parseFloat(uacr) || 0;
+
+                let score = 0;
+                if (vAge > 60) score += 5;
+                if (vSbp > 140) score += 4;
+                if (vEgfr < 60) score += 6;
+                if (vUacr > 30) score += 3;
+                if (dm) score += 7;
+                if (smoker) score += 5;
+
+                const estimatedRisk = Math.min(Math.pow(1.15, score), 80);
+                return estimatedRisk.toFixed(1);
+            };
+
+            const risk = calculateRisk();
+
+            return (
+                <CollapsibleCard title="AHA PREVENT™ 評估 (10年心血管風險)" icon="heart-pulse" iconColor="text-rose-500" themeColor="border-rose-400">
+                    <p className="text-sm text-slate-500 mb-4 font-medium">
+                        *AHA PREVENT™ (Predicting Risk of cardiovascular disease EVENTs) 評估工具主要適用於<strong className="text-blue-700">「初級預防 (Primary Prevention)」</strong>，用於無已知心血管疾病史或心臟衰竭之患者。
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <InputNumber label="年齡 (30-79歲)" unit="歲" value={age} onChange={setAge} placeholder="55" />
+                        <InputSelect label="性別" value={sex} onChange={setSex} options={[{value: 'male', label: '男性'}, {value: 'female', label: '女性'}]} />
+                        <InputNumber label="收縮壓 (SBP)" unit="mmHg" value={sbp} onChange={setSbp} placeholder="120" />
+                        <InputNumber label="總膽固醇 (TC)" unit="mg/dL" value={tc} onChange={setTc} placeholder="200" />
+                        <InputNumber label="HDL 膽固醇" unit="mg/dL" value={hdl} onChange={setHdl} placeholder="50" />
+                        <InputNumber label="eGFR" unit="ml/min/1.73m²" value={egfr} onChange={setEgfr} placeholder="60" />
+                        <InputNumber label="UACR" unit="mg/g" value={uacr} onChange={setUacr} placeholder="10" />
+                        <div className="md:col-span-2 flex items-center bg-slate-50 p-2 rounded border border-slate-200">
+                            <InputCheckbox label="目前吸菸 (Smoker)" checked={smoker} onChange={setSmoker} />
+                            <InputCheckbox label="糖尿病 (Diabetes)" checked={dm} onChange={setDm} />
+                        </div>
+                    </div>
+                    <div className="mt-4">
+                        <ResultView 
+                            value={risk} unit="%" description="10年 總體心血管風險"
+                            references={["包含 CKD 因子 (eGFR & UACR) 之評估結果", "(Ref: American Heart Association PREVENT™ Risk Calculator)"]}
+                        />
+                    </div>
+                </CollapsibleCard>
+            );
+        };
+
+        const SCORE2DCalc = () => {
+            const [hba1c, setHba1c] = useState('');
+            const [dmAge, setDmAge] = useState('');
+            const [egfr, setEgfr] = useState('');
+            const [nonhdl, setNonhdl] = useState('');
+            const [region, setRegion] = useState('high');
+
+            const calculateRisk = () => {
+                if (!hba1c || !dmAge || !egfr) return null;
+                const vHba1c = parseFloat(hba1c);
+                const vDmAge = parseFloat(dmAge);
+                const vEgfr = parseFloat(egfr);
+                const vNonhdl = parseFloat(nonhdl) || 130;
+
+                let baseline = 0;
+                switch(region) {
+                    case 'very_high': baseline = 16; break;
+                    case 'high': baseline = 11; break;
+                    case 'moderate': baseline = 7; break;
+                    case 'low': baseline = 4; break;
+                    default: baseline = 11;
+                }
+                
+                if (vHba1c > 8.5) baseline += 6;
+                else if (vHba1c > 7.5) baseline += 3;
+                
+                if (vEgfr < 45) baseline += 10;
+                else if (vEgfr < 60) baseline += 5;
+                
+                if (vNonhdl > 160) baseline += 3;
+                
+                const estimatedRisk = Math.min(baseline + (vDmAge / 12), 99);
+                return estimatedRisk.toFixed(1);
+            };
+
+            const risk = calculateRisk();
+            const riskLevel = risk !== null ? (risk > 20 ? "極高風險" : risk > 10 ? "高風險" : "低至中度風險") : "";
+
+            const regionOptions = [
+                { value: 'low', label: '低風險 (Low Risk)' },
+                { value: 'moderate', label: '中等風險 (Moderate Risk)' },
+                { value: 'high', label: '高風險 (High Risk) - 多數亞洲地區' },
+                { value: 'very_high', label: '極高風險 (Very High Risk)' }
+            ];
+
+            return (
+                <CollapsibleCard title="SCORE2-Diabetes 評估" icon="bar-chart-2" iconColor="text-emerald-500" themeColor="border-emerald-400">
+                    <p className="text-sm text-slate-500 mb-4 font-medium">*適用於 40-69 歲且患有第 2 型糖尿病的患者</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <InputNumber label="糖化血色素 HbA1c" unit="%" value={hba1c} onChange={setHba1c} placeholder="7.0" />
+                        <InputNumber label="糖尿病確診年齡" unit="歲" value={dmAge} onChange={setDmAge} placeholder="45" />
+                        <InputNumber label="eGFR" unit="ml/min/1.73m²" value={egfr} onChange={setEgfr} placeholder="75" />
+                        <InputNumber label="非 HDL 膽固醇" unit="mg/dL" value={nonhdl} onChange={setNonhdl} placeholder="130" />
+                        <div className="md:col-span-2 lg:col-span-2">
+                            <InputSelect 
+                                label="地區風險等級" 
+                                hint="(依 ESC 指引，台灣屬高風險區)" 
+                                value={region} 
+                                onChange={setRegion} 
+                                options={regionOptions} 
+                            />
+                        </div>
+                    </div>
+                    <div className="mt-4">
+                        <ResultView 
+                            value={risk} unit="%" description={`10年 CVD 風險預估 (${riskLevel})`}
+                            references={["根據 ESC 臨床指引，結合糖尿病變數進行心血管風險預測"]}
+                        />
+                    </div>
+                </CollapsibleCard>
+            );
+        };
+
+        const KFRECalc = () => {
+            const [age, setAge] = useState('');
+            const [sex, setSex] = useState('male');
+            const [egfr, setEgfr] = useState('');
+            const [acr, setAcr] = useState('');
+
+            const calculateRisk = () => {
+                if (!age || !egfr || !acr) return { risk2: null, risk5: null };
+                const vAge = parseFloat(age);
+                const vEgfr = parseFloat(egfr);
+                const vAcr = parseFloat(acr);
+
+                if (vAcr <= 0) return { risk2: null, risk5: null };
+
+                const maleCoeff = (sex === 'male' ? 0.2238 : 0);
+                const lnAcr = Math.log(vAcr);
+                
+                const base2 = -0.2201 * (vAge/10 - 7.036) + maleCoeff - 0.5567 * (vEgfr/5 - 7.222) + 0.4510 * (lnAcr - 5.137);
+                const risk2 = ((1 - Math.pow(0.9832, Math.exp(base2))) * 100).toFixed(2);
+
+                const base5 = -0.2167 * (vAge/10 - 7.036) + maleCoeff - 0.5541 * (vEgfr/5 - 7.222) + 0.4560 * (lnAcr - 5.137);
+                const risk5 = ((1 - Math.pow(0.9365, Math.exp(base5))) * 100).toFixed(2);
+
+                return { risk2, risk5 };
+            };
+
+            const { risk2, risk5 } = calculateRisk();
+
+            return (
+                <CollapsibleCard title="KFRE 4項變數風險方程 (腎衰竭風險)" icon="trending-down" iconColor="text-amber-600" themeColor="border-amber-500">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <InputNumber label="年齡" unit="歲" value={age} onChange={setAge} placeholder="60" />
+                        <InputSelect label="性別" value={sex} onChange={setSex} options={[{value: 'male', label: '男性'}, {value: 'female', label: '女性'}]} />
+                        <InputNumber label="eGFR" unit="ml/min/1.73m²" value={egfr} onChange={setEgfr} placeholder="30" />
+                        <InputNumber label="尿液 ACR" unit="mg/g" value={acr} onChange={setAcr} placeholder="300" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <ResultView 
+                            value={risk2} unit="%" description="2年 腎衰竭風險"
+                            references={["KFRE (Kidney Failure Risk Equation) 4-variable equation (North American)"]}
+                        />
+                        <ResultView 
+                            value={risk5} unit="%" description="5年 腎衰竭風險"
+                        />
+                    </div>
+                </CollapsibleCard>
+            );
+        };
+
+        // --- Section 4 (GN Guidelines Viewer) ---
+        const GNGuidelinesViewer = () => {
+            const guidelines = [
+                {
+                    title: "IgA 腎病 (IgAN) & IgA 血管炎 (IgAV)",
+                    year: "KDIGO 2025",
+                    themeColor: "border-sky-500",
+                    treatment: [
+                        <span key="1">最佳支持性療法 (Optimized Supportive Care, OSC)：所有患者應接受最大耐受劑量之 RAAS 阻斷劑、嚴格控制血壓，並強烈建議使用 <span className="highlight-dose">SGLT2 抑制劑</span>以降低心血管與腎臟進展風險。</span>,
+                        <span key="2">治療門檻更新：經過 90 天 OSC 後，若<span className="highlight-dose">蛋白尿仍持續 &gt; 0.5 g/d</span>，即代表患者具備高進展風險，應考慮加入新型療法或免疫抑制治療。</span>,
+                        <span key="3">系統性糖皮質素 (TESTING 降低劑量方案)：建議起始劑量為 <span className="highlight-dose">Methylprednisolone 0.4 mg/kg/day</span> (最大劑量不超過 32 mg/d) 或 <span className="highlight-dose">Prednisone equivalent</span>，逐漸減量，療程為 <span className="highlight-dose">6-9 個月</span>。強烈建議常規給予 PCP 預防用藥 (如 TMP-SMX)。</span>,
+                        <span key="4">腸道釋放型 Budesonide (TRF-budesonide / Nefecon)：<span className="highlight-dose">16 mg/day</span>，療程 <span className="highlight-dose">9 個月</span> (適用於有進展風險且 eGFR ≥ 30 的患者，副作用較全身性類固醇低)。</span>,
+                        <span key="5">新型非免疫抑制療法：Sparsentan (雙重內皮素/血管張力素受體拮抗劑) <span className="highlight-dose">400 mg/day</span>，可顯著降低蛋白尿。</span>
+                    ],
+                    monitoring: [
+                        "蛋白尿控制目標：盡可能降低，建議絕對要降至 < 1 g/d，理想情況下 < 0.5 g/d 以改善長期預後。",
+                        "密切監測 eGFR 下降斜率 (Slope) 與血壓變化。",
+                        "若使用系統性類固醇，須監測骨質疏鬆、感染預防及代謝症候群等副作用。"
+                    ]
+                },
+                {
+                    title: "狼瘡性腎炎 (Lupus Nephritis, LN)",
+                    year: "KDIGO 2024",
+                    themeColor: "border-purple-500",
+                    treatment: [
+                        <span key="1">基礎治療：所有 LN 患者除非有禁忌症，均應使用 <span className="highlight-dose">Hydroxychloroquine (HCQ) ≤ 5 mg/kg/day</span>。</span>,
+                        <span key="2">誘導緩解期 (Class III / IV)：<br/>• <span className="highlight-dose">IV Pulse Methylprednisolone 250-500 mg/day (1-3天)</span>，後接 <span className="highlight-dose">口服 Prednisone 0.3-0.5 mg/kg/day</span>，並在 <span className="highlight-dose">3-6個月內減至 ≤ 5 mg/day</span>。<br/>• 合併 <span className="highlight-dose">Cyclophosphamide (CYC) (Low-dose Euro-Lupus: 500 mg IV 每兩週一次，共6劑)</span> 或 <span className="highlight-dose">Mycophenolate mofetil (MMF) 2-3 g/day</span>。</span>,
+                        <span key="3">多標靶療法 (Add-on therapies)：可考慮加入 <span className="highlight-dose">Belimumab 10 mg/kg IV 每月一次</span> 或 <span className="highlight-dose">Voclosporin 23.7 mg BID</span> (建議與 MMF/low-dose steroid 併用)。</span>,
+                        <span key="4">維持期治療：首選 <span className="highlight-dose">MMF 1-2 g/day</span> 或 <span className="highlight-dose">Azathioprine (AZA) 1.5-2 mg/kg/day</span>，總療程至少 <span className="highlight-dose">36-60個月 (3-5年)</span>，視臨床反應而定。</span>
+                    ],
+                    monitoring: [
+                        "蛋白尿反應：評估治療第 12 個月時，蛋白尿是否降至 < 0.5 - 0.7 g/d 且無持續性血尿。",
+                        "監測 eGFR 是否穩定。定期檢驗 Anti-dsDNA 抗體效價與補體 (C3, C4) 濃度。",
+                        <span key="3">CNI 谷值濃度 (Trough level) 監控：針對使用傳統 CNI 者，<span className="highlight-dose">Tacrolimus 建議目標約 4–7 ng/mL</span>。</span>
+                    ]
+                },
+                {
+                    title: "ANCA 相關血管炎 (ANCA-Associated Vasculitis)",
+                    year: "KDIGO 2024",
+                    themeColor: "border-red-500",
+                    treatment: [
+                        <span key="1">誘導緩解期：<br/>• <span className="highlight-dose">Rituximab (RTX) 375 mg/m² 每週一次 (共4週) 或 1000 mg 兩劑相隔兩週</span> 或 <span className="highlight-dose">Cyclophosphamide (CYC) (IV pulse 15 mg/kg 每 2-3 週 或 口服 2 mg/kg/day 共 3-6 個月)</span>。<br/>• 合併 <span className="highlight-dose">Glucocorticoids</span> (如 PEXIVAS reduced-dose regimen)，<span className="highlight-dose">第 6 個月時減至 5 mg/day 甚至停藥</span>。</span>,
+                        <span key="2">替代類固醇療法：<span className="highlight-dose">Avacopan 30 mg BID</span> 可考慮用以替代或大幅減少糖皮質素的劑量。</span>,
+                        <span key="3">血漿置換 (PLEX)：不常規使用。僅建議保留於伴隨嚴重肺泡出血 (DAH) 或抗 GBM 抗體陽性之患者。</span>,
+                        <span key="4">維持期治療：強烈建議 <span className="highlight-dose">Rituximab (RTX) 500 mg 每 6 個月一次</span> (較常使用之劑量)，總療程至少 <span className="highlight-dose">18-24 個月</span>。替代方案為 <span className="highlight-dose">Azathioprine 2 mg/kg/day</span>。</span>
+                    ],
+                    monitoring: [
+                        "臨床活動度：監測血尿 (尿沉渣惡化常是復發早期指標) 與 eGFR。",
+                        "ANCA 效價：效價上升本身不可作為重啟免疫抑制劑的唯一依據，但需因此增加臨床監測頻率。",
+                        "感染預防：誘導期強烈建議給予 PCP 預防 (如 TMP-SMX)，並監測 RTX 導致的低免疫球蛋白血症 (IgG &lt; 3-4 g/L 且反覆感染時考慮 IVIG)。"
+                    ]
+                },
+                {
+                    title: "原發性膜性腎病變 (Primary Membranous Nephropathy)",
+                    year: "KDIGO 2021",
+                    themeColor: "border-teal-500",
+                    treatment: [
+                        <span key="1">風險分層：強烈建議使用 Anti-PLA2R 抗體作為診斷輔助及預後分層依據。低風險者給予支持性療法並觀察 (<span className="highlight-dose">3-6個月</span>)。</span>,
+                        <span key="2">中風險者：首選 <span className="highlight-dose">Rituximab (RTX) (例如 1 g x2 劑，或 375 mg/m² x4 劑)</span> 或 <span className="highlight-dose">Calcineurin inhibitors (CNI, 如 Tacrolimus 0.05-0.075 mg/kg/day 或 Cyclosporine 3.5-5 mg/kg/day)</span> 合併低劑量類固醇，CNI 建議使用 <span className="highlight-dose">至少 12-24 個月</span> 以減少復發。</span>,
+                        <span key="3">高/極高風險者 (如腎功能快速惡化)：推薦傳統的 <span className="highlight-dose">Modified Ponticelli regimen (交替類固醇與口服 Cyclophosphamide 2 mg/kg/day，為期 6 個月)</span>，或 RTX 合併 CNI/CYC。</span>
+                    ],
+                    monitoring: [
+                        "免疫學緩解指標：Anti-PLA2R 抗體效價下降 (通常早於臨床蛋白尿緩解數月發生)。建議治療後每 3-6 個月監測。",
+                        "臨床指標：監測蛋白尿是否能達到部分或完全緩解 (目標 &lt; 3.5 g/d 且持續下降)，以及血清白蛋白濃度的回升。",
+                        <span key="3">CNI 谷值濃度 (Trough level) 監控：<span className="highlight-dose">Tacrolimus 建議目標 3–8 ng/mL</span>；<span className="highlight-dose">Cyclosporine A 建議目標 125–175 ng/mL</span>。</span>
+                    ]
+                },
+                {
+                    title: "微小病變疾病 (MCD) / 局部節段性硬化症 (FSGS)",
+                    year: "KDIGO 2021",
+                    themeColor: "border-amber-500",
+                    treatment: [
+                        <span key="1">MCD 第一線治療：<span className="highlight-dose">Prednisone 1 mg/kg/day</span> (最大 80 mg) 或 <span className="highlight-dose">2 mg/kg 隔日給藥</span> (最大 120 mg)，長達 <span className="highlight-dose">8-16 週</span>，多數患者能迅速緩解，之後於 6 個月內逐漸減量。</span>,
+                        <span key="2">MCD 復發或類固醇依賴/抗拒者：建議轉用口服 <span className="highlight-dose">Cyclophosphamide (2-2.5 mg/kg/d，共 8-12 週)</span>、<span className="highlight-dose">Rituximab</span>、<span className="highlight-dose">CNI</span> 或 <span className="highlight-dose">MMF</span>。</span>,
+                        <span key="3">原發性 FSGS：第一線亦為高劑量糖皮質素 (同 MCD，但建議給予至少 <span className="highlight-dose">16 週</span> 才能判定是否具抗拒性)。</span>,
+                        <span key="4">類固醇抗拒型 FSGS：首選 <span className="highlight-dose">Calcineurin inhibitor (CNI, 如 Cyclosporine 3-5 mg/kg/day 或 Tacrolimus 0.05-0.1 mg/kg/day)</span> 至少 <span className="highlight-dose">6 個月</span>；若達到緩解，建議持續治療至少 <span className="highlight-dose">12 個月</span> 以降低復發率。</span>
+                    ],
+                    monitoring: [
+                        "尿蛋白緩解程度：MCD 預期可達完全緩解；FSGS 則需密切追蹤是否達到部分或完全緩解以決定腎臟存活預後。",
+                        <span key="2">CNI 谷值濃度 (Trough level) 監控：<span className="highlight-dose">Tacrolimus 建議目標 5–7 ng/mL</span>；<span className="highlight-dose">Cyclosporine A 建議目標 100–150 ng/mL</span>。長期使用須監控血壓、血糖及腎毒性。</span>
+                    ]
+                }
+            ];
+
+            return (
+                <div className="space-y-2">
+                    <div className="mb-2 px-2">
+                        <p className="text-sm text-slate-500 font-medium">根據最新 KDIGO 臨床實踐指引整理，點擊下方各疾病分類即可展開詳細的治療策略、藥物劑量與臨床監控指標。</p>
+                    </div>
+                    {guidelines.map((gn, idx) => (
+                        <CollapsibleCard 
+                            key={idx}
+                            title={gn.title}
+                            icon="shield-check"
+                            iconColor="text-slate-500"
+                            themeColor={gn.themeColor}
+                            rightAddon={<span className="gn-badge bg-slate-100 text-slate-600 border border-slate-200">{gn.year}</span>}
+                            defaultOpen={false}
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Treatment Column */}
+                                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                    <h4 className="font-bold text-blue-800 mb-3 flex items-center">
+                                        <i data-lucide="pill" className="w-4 h-4 mr-1"></i>
+                                        治療原則與劑量 (Treatment & Dose)
+                                    </h4>
+                                    <ul className="list-disc list-outside ml-4 space-y-3 text-sm text-slate-700 font-medium">
+                                        {gn.treatment.map((text, i) => (
+                                            <li key={i} className="leading-relaxed">{text}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                
+                                {/* Monitoring Column */}
+                                <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                                    <h4 className="font-bold text-teal-700 mb-3 flex items-center">
+                                        <i data-lucide="activity" className="w-4 h-4 mr-1"></i>
+                                        追蹤與監控指標 (Monitoring)
+                                    </h4>
+                                    <ul className="list-disc list-outside ml-4 space-y-2 text-sm text-slate-700 font-medium">
+                                        {gn.monitoring.map((text, i) => (
+                                            <li key={i} className="leading-relaxed">{text}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        </CollapsibleCard>
+                    ))}
                 </div>
-            `;
-            resDiv.classList.remove('hidden');
-        }
+            );
+        };
 
-        // --- SCORE2-Diabetes Calculation ---
-        function calcSCORE2D() {
-            const hba1c = parseFloat(document.getElementById('s2d-hba1c').value);
-            const dmAge = parseFloat(document.getElementById('s2d-dm-age').value);
-            const egfr = parseFloat(document.getElementById('s2d-egfr').value);
-            const nonhdl = parseFloat(document.getElementById('s2d-nonhdl').value);
-            const region = document.getElementById('s2d-region').value;
+        // --- Main App Component ---
+        const App = () => {
+            useEffect(() => {
+                lucide.createIcons();
+            });
 
-            if (!hba1c || !dmAge || !egfr) {
-                showMessage("輸入錯誤", "請填寫主要生化指標。");
-                return;
-            }
+            return (
+                <div className="max-w-4xl mx-auto p-4">
+                    <header className="mb-8 border-b-2 border-blue-900 pb-4">
+                        <h1 className="text-2xl font-bold text-blue-900 flex items-center gap-2 tracking-tight">
+                            <i data-lucide="stethoscope" className="text-blue-700 w-7 h-7"></i>
+                            Clinical Calculators & Guidelines
+                        </h1>
+                        <p className="text-slate-500 text-sm mt-1 font-medium">Evidence-based Clinical Tools ── 整合電解質、酸鹼、風險評估與臨床指引</p>
+                    </header>
 
-            let baseline = 0;
-            switch(region) {
-                case 'very_high': baseline = 16; break;
-                case 'high': baseline = 11; break;
-                case 'moderate': baseline = 7; break;
-                case 'low': baseline = 4; break;
-                default: baseline = 11;
-            }
-            
-            if (hba1c > 8.5) baseline += 6;
-            else if (hba1c > 7.5) baseline += 3;
-            
-            if (egfr < 45) baseline += 10;
-            else if (egfr < 60) baseline += 5;
-            
-            if (nonhdl > 160) baseline += 3;
-            
-            const risk = Math.min(baseline + (dmAge / 12), 99);
+                    {/* Section 1: Electrolytes */}
+                    <MainAccordion title="電解質 (Electrolytes)" icon="activity" iconColor="text-blue-600" defaultOpen={true}>
+                        <FeNaCalc />
+                        <FeKTTKGCalc />
+                        <FeCaCalc />
+                        <ARRCalc />
+                    </MainAccordion>
 
-            const resDiv = document.getElementById('res-score2d');
-            resDiv.innerHTML = `
-                <div class="flex flex-col space-y-2">
-                    <div class="flex justify-between border-b pb-1">
-                        <span class="font-medium text-slate-700">10年 CVD 風險預估:</span>
-                        <span class="text-xl font-bold text-green-600">${risk.toFixed(1)}%</span>
-                    </div>
-                    <div class="p-2 bg-white rounded border text-sm mt-2">
-                        <strong>風險等級:</strong> 
-                        ${risk > 20 ? '<span class="text-red-600 font-bold">極高風險</span>' : (risk > 10 ? '<span class="text-orange-600 font-bold">高風險</span>' : '低至中度風險')}
-                    </div>
+                    {/* Section 2: Acid-Base */}
+                    <MainAccordion title="酸鹼 (Acid-Base)" icon="flask-conical" iconColor="text-teal-600">
+                        <ABGCalc />
+                        <SerumGapsCalc />
+                        <UrineGapsRTACalc />
+                    </MainAccordion>
+
+                    {/* Section 3: Risk Assessment */}
+                    <MainAccordion title="風險評估 (Risk Assessment)" icon="clipboard-list" iconColor="text-amber-600">
+                        <KFRECalc />
+                        <PREVENTCalc />
+                        <SCORE2DCalc />
+                    </MainAccordion>
+
+                    {/* Section 4: GN Guidelines */}
+                    <MainAccordion title="GN 臨床指引 (GN Guidelines)" icon="book-open" iconColor="text-purple-600">
+                        <GNGuidelinesViewer />
+                    </MainAccordion>
+                    
+                    <footer className="text-center text-slate-400 text-xs mt-8 pb-4 font-medium">
+                        Disclaimer: 此工具僅供醫療專業人員參考使用，不能取代臨床專業判斷。
+                    </footer>
                 </div>
-            `;
-            resDiv.classList.remove('hidden');
-        }
+            );
+        };
 
-        // --- PREVENT Calculation ---
-        function calcPREVENT() {
-            const age = parseFloat(document.getElementById('prev-age').value);
-            const sbp = parseFloat(document.getElementById('prev-sbp').value);
-            const egfr = parseFloat(document.getElementById('prev-egfr').value);
-            const uacr = parseFloat(document.getElementById('prev-uacr').value);
-            const dm = document.getElementById('prev-dm').checked;
-            const smoker = document.getElementById('prev-smoker').checked;
-
-            if (!age || !sbp || !egfr) {
-                showMessage("輸入錯誤", "請填寫年齡、收縮壓與 eGFR。");
-                return;
-            }
-
-            let score = 0;
-            if (age > 60) score += 5;
-            if (sbp > 140) score += 4;
-            if (egfr < 60) score += 6;
-            if (uacr > 30) score += 3;
-            if (dm) score += 7;
-            if (smoker) score += 5;
-
-            const estimatedRisk = Math.min(Math.pow(1.15, score), 80);
-
-            const resDiv = document.getElementById('res-prevent');
-            resDiv.innerHTML = `
-                <div class="flex flex-col space-y-2">
-                    <div class="flex justify-between border-b pb-1">
-                        <span class="font-medium text-slate-700">10年 總體心血管風險:</span>
-                        <span class="text-xl font-bold text-blue-600">${estimatedRisk.toFixed(1)}%</span>
-                    </div>
-                    <p class="text-xs text-slate-500 mt-2">包含 CKD 因子 (eGFR & UACR) 之評估結果。</p>
-                </div>
-            `;
-            resDiv.classList.remove('hidden');
-        }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
