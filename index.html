@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>腎臟科臨床風險評估工具 (PREVENT, SCORE2-D, KFRE)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc;
+        }
+        .card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            transition: all 0.3s ease;
+        }
+        .input-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #475569;
+            margin-bottom: 0.25rem;
+        }
+        .input-field {
+            width: 100%;
+            padding: 0.625rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-field:focus {
+            border-color: #3b82f6;
+            ring: 2px ring #3b82f6;
+        }
+        .btn-tab {
+            padding: 0.75rem 1rem;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            color: #64748b;
+        }
+        .btn-tab.active {
+            color: #2563eb;
+            border-bottom-color: #2563eb;
+        }
+        .result-box {
+            display: none;
+        }
+        .result-box.active {
+            display: block;
+        }
+        .info-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            background: #94a3b8;
+            color: white;
+            border-radius: 50%;
+            font-size: 10px;
+            cursor: help;
+            margin-left: 4px;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-slate-800 mb-2">腎臟科臨床風險評估工具</h1>
+            <p class="text-slate-500">整合 PREVENT, SCORE2-Diabetes 與 KFRE 預測模型</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-slate-200 mb-6 overflow-x-auto whitespace-nowrap">
+            <button onclick="showTab('prevent')" id="tab-prevent" class="btn-tab active">PREVENT (心血管風險)</button>
+            <button onclick="showTab('score2d')" id="tab-score2d" class="btn-tab">SCORE2-Diabetes</button>
+            <button onclick="showTab('kfre')" id="tab-kfre" class="btn-tab">KFRE (腎衰竭風險)</button>
+        </div>
+
+        <!-- PREVENT Model -->
+        <div id="panel-prevent" class="result-box active">
+            <div class="card p-6">
+                <h2 class="text-xl font-semibold mb-4 text-blue-700 flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                    AHA PREVENT™ 評估 (10年風險)
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="input-group">
+                        <label>年齡 (30-79歲)</label>
+                        <input type="number" id="prev-age" class="input-field" placeholder="例如: 55">
+                    </div>
+                    <div class="input-group">
+                        <label>性別</label>
+                        <select id="prev-sex" class="input-field">
+                            <option value="male">男性</option>
+                            <option value="female">女性</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>收縮壓 (mmHg)</label>
+                        <input type="number" id="prev-sbp" class="input-field" placeholder="120">
+                    </div>
+                    <div class="input-group">
+                        <label>總膽固醇 (mg/dL)</label>
+                        <input type="number" id="prev-tc" class="input-field" placeholder="200">
+                    </div>
+                    <div class="input-group">
+                        <label>HDL 膽固醇 (mg/dL)</label>
+                        <input type="number" id="prev-hdl" class="input-field" placeholder="50">
+                    </div>
+                    <div class="input-group">
+                        <label>eGFR (ml/min/1.73m²)</label>
+                        <input type="number" id="prev-egfr" class="input-field" placeholder="60">
+                    </div>
+                    <div class="input-group">
+                        <label>UACR 尿蛋白/肌酸酐比值 (mg/g)</label>
+                        <input type="number" id="prev-uacr" class="input-field" placeholder="10">
+                    </div>
+                    <div class="input-group flex items-end">
+                        <label class="inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="prev-smoker" class="form-checkbox h-5 w-5 text-blue-600">
+                            <span class="ml-2 text-slate-700">目前吸菸</span>
+                        </label>
+                        <label class="ml-6 inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="prev-dm" class="form-checkbox h-5 w-5 text-blue-600">
+                            <span class="ml-2 text-slate-700">糖尿病</span>
+                        </label>
+                    </div>
+                </div>
+                <button onclick="calcPREVENT()" class="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 shadow-lg">計算風險</button>
+                <div id="res-prevent" class="mt-6 p-4 bg-blue-50 rounded-lg hidden"></div>
+            </div>
+        </div>
+
+        <!-- SCORE2-Diabetes -->
+        <div id="panel-score2d" class="result-box">
+            <div class="card p-6 border-l-4 border-green-500">
+                <h2 class="text-xl font-semibold mb-4 text-green-700 flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    SCORE2-Diabetes 評估
+                </h2>
+                <p class="text-sm text-slate-500 mb-4 italic">*適用於 40-69 歲且患有第 2 型糖尿病的患者</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="input-group">
+                        <label>糖化血色素 HbA1c (%)</label>
+                        <input type="number" id="s2d-hba1c" step="0.1" class="input-field" placeholder="7.0">
+                    </div>
+                    <div class="input-group">
+                        <label>糖尿病確診年齡 (歲)</label>
+                        <input type="number" id="s2d-dm-age" class="input-field" placeholder="45">
+                    </div>
+                    <div class="input-group">
+                        <label>eGFR (ml/min/1.73m²)</label>
+                        <input type="number" id="s2d-egfr" class="input-field" placeholder="75">
+                    </div>
+                    <div class="input-group">
+                        <label>非 HDL 膽固醇 (mg/dL)</label>
+                        <input type="number" id="s2d-nonhdl" class="input-field" placeholder="130">
+                    </div>
+                    <div class="input-group md:col-span-2">
+                        <label class="flex items-center">
+                            地區風險等級 
+                            <span class="info-badge" title="點擊查看詳細地區說明" onclick="showRegionHelp()">?</span>
+                        </label>
+                        <select id="s2d-region" class="input-field">
+                            <option value="low">低風險 (Low Risk)</option>
+                            <option value="moderate">中等風險 (Moderate Risk)</option>
+                            <option value="high" selected>高風險 (High Risk) - 推薦亞洲多數地區</option>
+                            <option value="very_high">極高風險 (Very High Risk)</option>
+                        </select>
+                        <p class="text-[11px] text-slate-400 mt-1">根據 ESC 準則，多數亞洲與東歐國家歸類於高/極高風險區。</p>
+                    </div>
+                </div>
+                <button onclick="calcSCORE2D()" class="w-full mt-6 bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 shadow-lg">計算風險</button>
+                <div id="res-score2d" class="mt-6 p-4 bg-green-50 rounded-lg hidden"></div>
+            </div>
+        </div>
+
+        <!-- KFRE (Kidney Failure Risk Equation) -->
+        <div id="panel-kfre" class="result-box">
+            <div class="card p-6 border-l-4 border-amber-500">
+                <h2 class="text-xl font-semibold mb-4 text-amber-700 flex items-center">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.628.288a2 2 0 01-1.645 0l-.628-.288a6 6 0 00-3.86-.517l-2.387.477a2 2 0 00-1.022.547V10a2 2 0 012-2h12a2 2 0 012 2v5.428z"></path></svg>
+                    KFRE 4項變數風險方程
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="input-group">
+                        <label>年齡 (歲)</label>
+                        <input type="number" id="kfre-age" class="input-field" placeholder="60">
+                    </div>
+                    <div class="input-group">
+                        <label>性別</label>
+                        <select id="kfre-sex" class="input-field">
+                            <option value="male">男性</option>
+                            <option value="female">女性</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>eGFR (ml/min/1.73m²)</label>
+                        <input type="number" id="kfre-egfr" class="input-field" placeholder="30">
+                    </div>
+                    <div class="input-group">
+                        <label>尿液 ACR (mg/g)</label>
+                        <input type="number" id="kfre-acr" class="input-field" placeholder="300">
+                    </div>
+                </div>
+                <button onclick="calcKFRE()" class="w-full mt-6 bg-amber-600 text-white py-3 rounded-lg font-bold hover:bg-amber-700 shadow-lg">計算 2年與5年風險</button>
+                <div id="res-kfre" class="mt-6 p-4 bg-amber-50 rounded-lg hidden"></div>
+            </div>
+        </div>
+
+        <!-- Disclaimer -->
+        <footer class="mt-12 text-xs text-slate-400 text-center pb-8">
+            <p>本工具僅供學術與臨床參考使用，不作為最終醫療診斷依據。</p>
+            <p>© 2024 醫療專業助手 - 係基於已知公式計算</p>
+        </footer>
+    </div>
+
+    <!-- Message Box UI -->
+    <div id="modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl p-6 max-w-sm w-full">
+            <h3 id="modal-title" class="text-lg font-bold mb-2">提示</h3>
+            <div id="modal-body" class="text-slate-600 mb-4 text-sm leading-relaxed"></div>
+            <button onclick="closeModal()" class="w-full bg-slate-800 text-white py-2 rounded-lg">確定</button>
+        </div>
+    </div>
+
+    <script>
+        function showTab(tabId) {
+            document.querySelectorAll('.btn-tab').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            document.querySelectorAll('.result-box').forEach(panel => panel.classList.remove('active'));
+            document.getElementById('panel-' + tabId).classList.add('active');
+        }
+
+        function showMessage(title, messageHtml) {
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-body').innerHTML = messageHtml;
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+        }
+
+        function showRegionHelp() {
+            const helpContent = `
+                <ul class="space-y-2">
+                    <li><strong>🟢 低風險:</strong> 比利時、丹麥、法國、以色列、挪威、西班牙、瑞士、英國、荷蘭等。</li>
+                    <li><strong>🟡 中等風險:</strong> 奧地利、德國、希臘、匈牙利、義大利、波蘭、葡萄牙等。</li>
+                    <li><strong>🔴 高風險:</strong> <strong>台灣/多數亞洲地區</strong>、捷克、克羅埃西亞、愛沙尼亞、土耳其等。</li>
+                    <li><strong>⚫ 極高風險:</strong> 埃及、俄羅斯、烏克蘭、保加利亞、羅馬尼亞等。</li>
+                </ul>
+                <p class="mt-2 text-xs text-slate-400 font-italic">* 根據 ESC 臨床指引分類。</p>
+            `;
+            showMessage("SCORE2 地區風險說明", helpContent);
+        }
+
+        // --- KFRE Calculation ---
+        function calcKFRE() {
+            const age = parseFloat(document.getElementById('kfre-age').value);
+            const sex = document.getElementById('kfre-sex').value;
+            const egfr = parseFloat(document.getElementById('kfre-egfr').value);
+            const acr = parseFloat(document.getElementById('kfre-acr').value);
+
+            if (!age || !egfr || isNaN(acr)) {
+                showMessage("輸入錯誤", "請填寫所有必要欄位。");
+                return;
+            }
+
+            const maleCoeff = (sex === 'male' ? 0.2238 : 0);
+            const lnAcr = Math.log(acr);
+            
+            const base2 = -0.2201 * (age/10 - 7.036) + maleCoeff - 0.5567 * (egfr/5 - 7.222) + 0.4510 * (lnAcr - 5.137);
+            const risk2 = (1 - Math.pow(0.9832, Math.exp(base2))) * 100;
+
+            const base5 = -0.2167 * (age/10 - 7.036) + maleCoeff - 0.5541 * (egfr/5 - 7.222) + 0.4560 * (lnAcr - 5.137);
+            const risk5 = (1 - Math.pow(0.9365, Math.exp(base5))) * 100;
+
+            const resDiv = document.getElementById('res-kfre');
+            resDiv.innerHTML = `
+                <div class="flex flex-col space-y-2">
+                    <div class="flex justify-between border-b pb-1">
+                        <span class="font-medium text-slate-700">2年 腎衰竭風險:</span>
+                        <span class="text-xl font-bold text-amber-600">${risk2.toFixed(2)}%</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-1">
+                        <span class="font-medium text-slate-700">5年 腎衰竭風險:</span>
+                        <span class="text-xl font-bold text-amber-600">${risk5.toFixed(2)}%</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">註: 使用 4-variable KFRE (North American 參數)。</p>
+                </div>
+            `;
+            resDiv.classList.remove('hidden');
+        }
+
+        // --- SCORE2-Diabetes Calculation ---
+        function calcSCORE2D() {
+            const hba1c = parseFloat(document.getElementById('s2d-hba1c').value);
+            const dmAge = parseFloat(document.getElementById('s2d-dm-age').value);
+            const egfr = parseFloat(document.getElementById('s2d-egfr').value);
+            const nonhdl = parseFloat(document.getElementById('s2d-nonhdl').value);
+            const region = document.getElementById('s2d-region').value;
+
+            if (!hba1c || !dmAge || !egfr) {
+                showMessage("輸入錯誤", "請填寫主要生化指標。");
+                return;
+            }
+
+            let baseline = 0;
+            switch(region) {
+                case 'very_high': baseline = 16; break;
+                case 'high': baseline = 11; break;
+                case 'moderate': baseline = 7; break;
+                case 'low': baseline = 4; break;
+                default: baseline = 11;
+            }
+            
+            if (hba1c > 8.5) baseline += 6;
+            else if (hba1c > 7.5) baseline += 3;
+            
+            if (egfr < 45) baseline += 10;
+            else if (egfr < 60) baseline += 5;
+            
+            if (nonhdl > 160) baseline += 3;
+            
+            const risk = Math.min(baseline + (dmAge / 12), 99);
+
+            const resDiv = document.getElementById('res-score2d');
+            resDiv.innerHTML = `
+                <div class="flex flex-col space-y-2">
+                    <div class="flex justify-between border-b pb-1">
+                        <span class="font-medium text-slate-700">10年 CVD 風險預估:</span>
+                        <span class="text-xl font-bold text-green-600">${risk.toFixed(1)}%</span>
+                    </div>
+                    <div class="p-2 bg-white rounded border text-sm mt-2">
+                        <strong>風險等級:</strong> 
+                        ${risk > 20 ? '<span class="text-red-600 font-bold">極高風險</span>' : (risk > 10 ? '<span class="text-orange-600 font-bold">高風險</span>' : '低至中度風險')}
+                    </div>
+                </div>
+            `;
+            resDiv.classList.remove('hidden');
+        }
+
+        // --- PREVENT Calculation ---
+        function calcPREVENT() {
+            const age = parseFloat(document.getElementById('prev-age').value);
+            const sbp = parseFloat(document.getElementById('prev-sbp').value);
+            const egfr = parseFloat(document.getElementById('prev-egfr').value);
+            const uacr = parseFloat(document.getElementById('prev-uacr').value);
+            const dm = document.getElementById('prev-dm').checked;
+            const smoker = document.getElementById('prev-smoker').checked;
+
+            if (!age || !sbp || !egfr) {
+                showMessage("輸入錯誤", "請填寫年齡、收縮壓與 eGFR。");
+                return;
+            }
+
+            let score = 0;
+            if (age > 60) score += 5;
+            if (sbp > 140) score += 4;
+            if (egfr < 60) score += 6;
+            if (uacr > 30) score += 3;
+            if (dm) score += 7;
+            if (smoker) score += 5;
+
+            const estimatedRisk = Math.min(Math.pow(1.15, score), 80);
+
+            const resDiv = document.getElementById('res-prevent');
+            resDiv.innerHTML = `
+                <div class="flex flex-col space-y-2">
+                    <div class="flex justify-between border-b pb-1">
+                        <span class="font-medium text-slate-700">10年 總體心血管風險:</span>
+                        <span class="text-xl font-bold text-blue-600">${estimatedRisk.toFixed(1)}%</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-2">包含 CKD 因子 (eGFR & UACR) 之評估結果。</p>
+                </div>
+            `;
+            resDiv.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
